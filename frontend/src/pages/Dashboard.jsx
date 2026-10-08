@@ -12,6 +12,89 @@ function Dashboard({ setLoggedIn }) {
     const [editTitle, setEditTitle] = useState("");
     const [editDescription, setEditDescription] = useState("");
 
+    // =========================
+    // WEBSOCKET
+    // =========================
+
+    useEffect(() => {
+        const socket = new WebSocket(
+            "wss://taskmanager-1-lmfp.onrender.com/ws"
+        );
+
+        socket.onopen = () => {
+            console.log("WebSocket connected");
+        };
+
+        socket.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+
+                console.log("WebSocket message:", message);
+
+                // CREATE
+                if (message.type === "task_created") {
+                    setTasks((previousTasks) => {
+                        const exists = previousTasks.some(
+                            (task) => task.id === message.task.id
+                        );
+
+                        if (exists) {
+                            return previousTasks;
+                        }
+
+                        return [
+                            message.task,
+                            ...previousTasks,
+                        ];
+                    });
+                }
+
+                // UPDATE / COMPLETE
+                if (message.type === "task_updated") {
+                    setTasks((previousTasks) =>
+                        previousTasks.map((task) =>
+                            task.id === message.task.id
+                                ? message.task
+                                : task
+                        )
+                    );
+                }
+
+                // DELETE
+                if (message.type === "task_deleted") {
+                    setTasks((previousTasks) =>
+                        previousTasks.filter(
+                            (task) =>
+                                task.id !== message.task_id
+                        )
+                    );
+                }
+
+            } catch (error) {
+                console.error(
+                    "Failed to process WebSocket message:",
+                    error
+                );
+            }
+        };
+
+        socket.onerror = (error) => {
+            console.error("WebSocket error:", error);
+        };
+
+        socket.onclose = () => {
+            console.log("WebSocket disconnected");
+        };
+
+        return () => {
+            socket.close();
+        };
+    }, []);
+
+    // =========================
+    // FETCH TASKS
+    // =========================
+
     useEffect(() => {
         fetchTasks();
     }, []);
@@ -26,7 +109,7 @@ function Dashboard({ setLoggedIn }) {
                 setTasks(response.data);
             } else {
                 console.error(
-                    "Expected an array of tasks, but received:",
+                    "Expected an array of tasks:",
                     response.data
                 );
 
@@ -55,6 +138,10 @@ function Dashboard({ setLoggedIn }) {
         }
     };
 
+    // =========================
+    // CREATE TASK
+    // =========================
+
     const createTask = async (event) => {
         event.preventDefault();
 
@@ -63,15 +150,15 @@ function Dashboard({ setLoggedIn }) {
         }
 
         try {
-            const response = await api.post("/tasks/", {
+            await api.post("/tasks/", {
                 title: title,
                 description: description,
             });
 
-            setTasks((previousTasks) => [
-                response.data,
-                ...previousTasks,
-            ]);
+            /*
+             * Do NOT manually add the task here.
+             * WebSocket will add it.
+             */
 
             setTitle("");
             setDescription("");
@@ -86,20 +173,20 @@ function Dashboard({ setLoggedIn }) {
         }
     };
 
+    // =========================
+    // COMPLETE TASK
+    // =========================
+
     const completeTask = async (taskId) => {
         try {
-            const response = await api.patch(
+            await api.patch(
                 `/tasks/${taskId}/complete`,
                 {}
             );
 
-            setTasks((previousTasks) =>
-                previousTasks.map((task) =>
-                    task.id === taskId
-                        ? response.data
-                        : task
-                )
-            );
+            /*
+             * WebSocket handles the UI update.
+             */
 
         } catch (error) {
             console.error(error);
@@ -110,6 +197,10 @@ function Dashboard({ setLoggedIn }) {
             );
         }
     };
+
+    // =========================
+    // EDIT TASK
+    // =========================
 
     const startEditing = (task) => {
         setEditingTaskId(task.id);
@@ -129,7 +220,7 @@ function Dashboard({ setLoggedIn }) {
         }
 
         try {
-            const response = await api.put(
+            await api.put(
                 `/tasks/${taskId}`,
                 {
                     title: editTitle,
@@ -137,13 +228,9 @@ function Dashboard({ setLoggedIn }) {
                 }
             );
 
-            setTasks((previousTasks) =>
-                previousTasks.map((task) =>
-                    task.id === taskId
-                        ? response.data
-                        : task
-                )
-            );
+            /*
+             * WebSocket handles the UI update.
+             */
 
             cancelEditing();
 
@@ -157,6 +244,10 @@ function Dashboard({ setLoggedIn }) {
         }
     };
 
+    // =========================
+    // DELETE TASK
+    // =========================
+
     const deleteTask = async (taskId) => {
         const confirmed = window.confirm(
             "Are you sure you want to delete this task?"
@@ -169,11 +260,9 @@ function Dashboard({ setLoggedIn }) {
         try {
             await api.delete(`/tasks/${taskId}`);
 
-            setTasks((previousTasks) =>
-                previousTasks.filter(
-                    (task) => task.id !== taskId
-                )
-            );
+            /*
+             * WebSocket handles the UI update.
+             */
 
         } catch (error) {
             console.error(error);
@@ -185,10 +274,18 @@ function Dashboard({ setLoggedIn }) {
         }
     };
 
+    // =========================
+    // LOGOUT
+    // =========================
+
     const logout = () => {
         localStorage.removeItem("access_token");
         setLoggedIn(false);
     };
+
+    // =========================
+    // FILTER TASKS
+    // =========================
 
     const completedTasks = tasks.filter(
         (task) => task.completed
@@ -197,6 +294,10 @@ function Dashboard({ setLoggedIn }) {
     const pendingTasks = tasks.filter(
         (task) => !task.completed
     );
+
+    // =========================
+    // LOADING
+    // =========================
 
     if (loading) {
         return (
@@ -207,6 +308,10 @@ function Dashboard({ setLoggedIn }) {
             </div>
         );
     }
+
+    // =========================
+    // DASHBOARD
+    // =========================
 
     return (
         <div className="dashboard-page">
@@ -236,7 +341,7 @@ function Dashboard({ setLoggedIn }) {
             </aside>
 
 
-            {/* MAIN CONTENT */}
+            {/* MAIN */}
 
             <main className="main-content">
 
@@ -246,7 +351,9 @@ function Dashboard({ setLoggedIn }) {
 
                     <div>
 
-                        <h1>My Tasks</h1>
+                        <h1>
+                            My Tasks
+                        </h1>
 
                         <p>
                             Organize your work and stay productive.
@@ -324,7 +431,7 @@ function Dashboard({ setLoggedIn }) {
                 </section>
 
 
-                {/* PENDING TASKS */}
+                {/* PENDING */}
 
                 <section className="tasks-section">
 
@@ -339,7 +446,6 @@ function Dashboard({ setLoggedIn }) {
                         </span>
 
                     </div>
-
 
                     {pendingTasks.length === 0 ? (
 
@@ -488,7 +594,7 @@ function Dashboard({ setLoggedIn }) {
                 </section>
 
 
-                {/* COMPLETED TASKS */}
+                {/* COMPLETED */}
 
                 {completedTasks.length > 0 && (
 
