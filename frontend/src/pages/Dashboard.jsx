@@ -19,9 +19,37 @@ function Dashboard({ setLoggedIn }) {
     const fetchTasks = async () => {
         try {
             const response = await api.get("/tasks/");
-            setTasks(response.data);
+
+            console.log("TASK RESPONSE:", response.data);
+
+            if (Array.isArray(response.data)) {
+                setTasks(response.data);
+            } else {
+                console.error(
+                    "Expected an array of tasks, but received:",
+                    response.data
+                );
+
+                setTasks([]);
+            }
+
         } catch (error) {
-            console.error(error);
+            console.error("FETCH TASKS ERROR:", error);
+
+            if (error.response) {
+                console.error(
+                    "STATUS:",
+                    error.response.status
+                );
+
+                console.error(
+                    "DATA:",
+                    error.response.data
+                );
+            }
+
+            setTasks([]);
+
         } finally {
             setLoading(false);
         }
@@ -47,6 +75,7 @@ function Dashboard({ setLoggedIn }) {
 
             setTitle("");
             setDescription("");
+
         } catch (error) {
             console.error(error);
 
@@ -71,6 +100,7 @@ function Dashboard({ setLoggedIn }) {
                         : task
                 )
             );
+
         } catch (error) {
             console.error(error);
 
@@ -116,6 +146,7 @@ function Dashboard({ setLoggedIn }) {
             );
 
             cancelEditing();
+
         } catch (error) {
             console.error(error);
 
@@ -143,6 +174,7 @@ function Dashboard({ setLoggedIn }) {
                     (task) => task.id !== taskId
                 )
             );
+
         } catch (error) {
             console.error(error);
 
@@ -213,29 +245,39 @@ function Dashboard({ setLoggedIn }) {
                 <header className="dashboard-header">
 
                     <div>
+
                         <h1>My Tasks</h1>
 
                         <p>
                             Organize your work and stay productive.
                         </p>
+
                     </div>
 
                     <div className="task-stats">
 
                         <div className="stat">
+
                             <strong>
                                 {pendingTasks.length}
                             </strong>
 
-                            <span>Pending</span>
+                            <span>
+                                Pending
+                            </span>
+
                         </div>
 
                         <div className="stat">
+
                             <strong>
                                 {completedTasks.length}
                             </strong>
 
-                            <span>Completed</span>
+                            <span>
+                                Completed
+                            </span>
+
                         </div>
 
                     </div>
@@ -247,7 +289,9 @@ function Dashboard({ setLoggedIn }) {
 
                 <section className="create-task-card">
 
-                    <h2>Create a new task</h2>
+                    <h2>
+                        Create a new task
+                    </h2>
 
                     <form onSubmit={createTask}>
 
@@ -285,16 +329,22 @@ function Dashboard({ setLoggedIn }) {
                 <section className="tasks-section">
 
                     <div className="section-heading">
-                        <h2>Pending</h2>
+
+                        <h2>
+                            Pending
+                        </h2>
 
                         <span>
                             {pendingTasks.length}
                         </span>
+
                     </div>
+
 
                     {pendingTasks.length === 0 ? (
 
                         <div className="empty-state">
+
                             <div className="empty-icon">
                                 ✓
                             </div>
@@ -306,6 +356,7 @@ function Dashboard({ setLoggedIn }) {
                             <p>
                                 You don't have any pending tasks.
                             </p>
+
                         </div>
 
                     ) : (
@@ -423,6 +474,7 @@ function Dashboard({ setLoggedIn }) {
                                             </div>
 
                                         </>
+
                                     )}
 
                                 </div>
@@ -430,6 +482,7 @@ function Dashboard({ setLoggedIn }) {
                             ))}
 
                         </div>
+
                     )}
 
                 </section>
@@ -443,7 +496,9 @@ function Dashboard({ setLoggedIn }) {
 
                         <div className="section-heading">
 
-                            <h2>Completed</h2>
+                            <h2>
+                                Completed
+                            </h2>
 
                             <span>
                                 {completedTasks.length}
