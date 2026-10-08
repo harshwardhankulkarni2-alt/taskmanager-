@@ -14,6 +14,10 @@ router = APIRouter(
 )
 
 
+# =========================
+# CREATE TASK
+# =========================
+
 @router.post(
     "/",
     response_model=TaskResponse,
@@ -34,6 +38,7 @@ async def create_task(
     db.commit()
     db.refresh(new_task)
 
+    # Send real-time message
     await manager.broadcast({
         "type": "task_created",
         "task": {
@@ -48,6 +53,10 @@ async def create_task(
     return new_task
 
 
+# =========================
+# GET ALL TASKS
+# =========================
+
 @router.get(
     "/",
     response_model=list[TaskResponse]
@@ -60,6 +69,10 @@ def get_tasks(
         Task.owner_id == current_user.id
     ).all()
 
+
+# =========================
+# GET TASKS BY STATUS
+# =========================
 
 @router.get(
     "/status/{completed}",
@@ -75,6 +88,10 @@ def get_tasks_by_status(
         Task.completed == completed
     ).all()
 
+
+# =========================
+# GET SINGLE TASK
+# =========================
 
 @router.get(
     "/{task_id}",
@@ -99,11 +116,15 @@ def get_task(
     return task
 
 
+# =========================
+# UPDATE TASK
+# =========================
+
 @router.put(
     "/{task_id}",
     response_model=TaskResponse
 )
-async def update_task(
+def update_task(
     task_id: int,
     task_data: TaskUpdate,
     db: Session = Depends(get_db),
@@ -132,25 +153,18 @@ async def update_task(
     db.commit()
     db.refresh(task)
 
-    await manager.broadcast({
-        "type": "task_updated",
-        "task": {
-            "id": task.id,
-            "title": task.title,
-            "description": task.description,
-            "completed": task.completed,
-            "owner_id": task.owner_id
-        }
-    })
-
     return task
 
+
+# =========================
+# COMPLETE TASK
+# =========================
 
 @router.patch(
     "/{task_id}/complete",
     response_model=TaskResponse
 )
-async def complete_task(
+def complete_task(
     task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -171,25 +185,18 @@ async def complete_task(
     db.commit()
     db.refresh(task)
 
-    await manager.broadcast({
-        "type": "task_updated",
-        "task": {
-            "id": task.id,
-            "title": task.title,
-            "description": task.description,
-            "completed": task.completed,
-            "owner_id": task.owner_id
-        }
-    })
-
     return task
 
+
+# =========================
+# DELETE TASK
+# =========================
 
 @router.delete(
     "/{task_id}",
     status_code=status.HTTP_204_NO_CONTENT
 )
-async def delete_task(
+def delete_task(
     task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -207,10 +214,5 @@ async def delete_task(
 
     db.delete(task)
     db.commit()
-
-    await manager.broadcast({
-        "type": "task_deleted",
-        "task_id": task_id
-    })
 
     return None
