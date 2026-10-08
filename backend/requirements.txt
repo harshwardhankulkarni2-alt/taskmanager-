@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+sqlalchemy
+python-jose[cryptography]
+pwdlib[argon2]
+python-dotenv
+python-multipart
