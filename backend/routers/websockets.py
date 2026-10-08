@@ -15,7 +15,6 @@ async def websocket_endpoint(websocket: WebSocket):
 
     try:
         while True:
-            # Keep the connection alive
             await websocket.receive_text()
 
     except WebSocketDisconnect:

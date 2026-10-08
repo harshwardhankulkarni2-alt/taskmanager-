@@ -38,7 +38,6 @@ async def create_task(
     db.commit()
     db.refresh(new_task)
 
-    # Send real-time message
     await manager.broadcast({
         "type": "task_created",
         "task": {
@@ -46,6 +45,8 @@ async def create_task(
             "title": new_task.title,
             "description": new_task.description,
             "completed": new_task.completed,
+            "created_at": new_task.created_at.isoformat(),
+            "updated_at": new_task.updated_at.isoformat(),
             "owner_id": new_task.owner_id
         }
     })
@@ -124,7 +125,7 @@ def get_task(
     "/{task_id}",
     response_model=TaskResponse
 )
-def update_task(
+async def update_task(
     task_id: int,
     task_data: TaskUpdate,
     db: Session = Depends(get_db),
@@ -153,6 +154,19 @@ def update_task(
     db.commit()
     db.refresh(task)
 
+    await manager.broadcast({
+        "type": "task_updated",
+        "task": {
+            "id": task.id,
+            "title": task.title,
+            "description": task.description,
+            "completed": task.completed,
+            "created_at": task.created_at.isoformat(),
+            "updated_at": task.updated_at.isoformat(),
+            "owner_id": task.owner_id
+        }
+    })
+
     return task
 
 
@@ -164,7 +178,7 @@ def update_task(
     "/{task_id}/complete",
     response_model=TaskResponse
 )
-def complete_task(
+async def complete_task(
     task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -185,6 +199,19 @@ def complete_task(
     db.commit()
     db.refresh(task)
 
+    await manager.broadcast({
+        "type": "task_updated",
+        "task": {
+            "id": task.id,
+            "title": task.title,
+            "description": task.description,
+            "completed": task.completed,
+            "created_at": task.created_at.isoformat(),
+            "updated_at": task.updated_at.isoformat(),
+            "owner_id": task.owner_id
+        }
+    })
+
     return task
 
 
@@ -196,7 +223,7 @@ def complete_task(
     "/{task_id}",
     status_code=status.HTTP_204_NO_CONTENT
 )
-def delete_task(
+async def delete_task(
     task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -214,5 +241,10 @@ def delete_task(
 
     db.delete(task)
     db.commit()
+
+    await manager.broadcast({
+        "type": "task_deleted",
+        "task_id": task_id
+    })
 
     return None
